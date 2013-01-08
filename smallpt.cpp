@@ -24,7 +24,11 @@ struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
 
 struct Ray { Vec o, d; Ray(const Vec &o_, const Vec &d_) : o(o_), d(d_) {} };
 
-enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
+enum Refl_t { 
+    DIFFUSE, 
+    SPECULAR, 
+    REFRACTIVE
+};  // material types, used in radiance()
 
 struct Sphere {
     double rad;       // radius
@@ -47,15 +51,15 @@ struct Sphere {
 
 Sphere spheres[] = {
     //Scene: radius, position,              emission,       color,              material
-    Sphere(1e5,     Vec( 1e5+1,40.8,81.6),  Vec(),          Vec(.75,.25,.25),   DIFF),//Left
-    Sphere(1e5,     Vec(-1e5+99,40.8,81.6), Vec(),          Vec(.25,.25,.75),   DIFF),//Rght
-    Sphere(1e5,     Vec(50,40.8, 1e5),      Vec(),          Vec(.75,.75,.75),   DIFF),//Back
-    Sphere(1e5,     Vec(50,40.8,-1e5+170),  Vec(),          Vec(),              DIFF),//Frnt
-    Sphere(1e5,     Vec(50, 1e5, 81.6),     Vec(),          Vec(.75,.75,.75),   DIFF),//Botm
-    Sphere(1e5,     Vec(50,-1e5+81.6,81.6), Vec(),          Vec(.75,.75,.75),   DIFF),//Top
-    Sphere(16.5,    Vec(27,16.5,47),        Vec(),          Vec(1,1,1)*.999,    SPEC),//Mirr
-    Sphere(16.5,    Vec(73,16.5,78),        Vec(),          Vec(1,1,1)*.999,    REFR),//Glas
-    Sphere(1.5,     Vec(50,81.6-16.5,81.6), Vec(4,4,4)*100,  Vec(),             DIFF) //Lite
+    Sphere(1e5,     Vec( 1e5+1,40.8,81.6),  Vec(),          Vec(.75,.25,.25),   DIFFUSE),//Left
+    Sphere(1e5,     Vec(-1e5+99,40.8,81.6), Vec(),          Vec(.25,.25,.75),   DIFFUSE),//Rght
+    Sphere(1e5,     Vec(50,40.8, 1e5),      Vec(),          Vec(.75,.75,.75),   DIFFUSE),//Back
+    Sphere(1e5,     Vec(50,40.8,-1e5+170),  Vec(),          Vec(),              DIFFUSE),//Frnt
+    Sphere(1e5,     Vec(50, 1e5, 81.6),     Vec(),          Vec(.75,.75,.75),   DIFFUSE),//Botm
+    Sphere(1e5,     Vec(50,-1e5+81.6,81.6), Vec(),          Vec(.75,.75,.75),   DIFFUSE),//Top
+    Sphere(16.5,    Vec(27,16.5,47),        Vec(),          Vec(1,1,1)*.999,    SPECULAR),//Mirr
+    Sphere(16.5,    Vec(73,16.5,78),        Vec(),          Vec(1,1,1)*.999,    REFRACTIVE),//Glas
+    Sphere(1.5,     Vec(50,81.6-16.5,81.6), Vec(4,4,4)*100,  Vec(),             DIFFUSE) //Lite
 };
 
 const int N_SPHERES = sizeof(spheres)/sizeof(Sphere);
@@ -65,7 +69,7 @@ inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
 inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
 
 inline bool intersect(const Ray &r, double &t, int &id){
-    double inf = t = 1e20;
+    const double INF = t = 1e20;
     for(int i = 0;i < N_SPHERES;i++) 
     {
         double d=spheres[i].intersect(r);
@@ -75,7 +79,7 @@ inline bool intersect(const Ray &r, double &t, int &id){
             id=i;
         }
     }
-    return t<inf;
+    return t<INF;
 }
 
 Vec radiance(const Ray &r, int depth, RandomLCG &Xi, int E=1){
@@ -100,7 +104,7 @@ Vec radiance(const Ray &r, int depth, RandomLCG &Xi, int E=1){
     if (depth > 100) 
         return obj.e; // MILO
 
-    if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
+    if (obj.refl == DIFFUSE){                  // Ideal DIFFUSE reflection
         double r1=2*M_PI*Xi();
         double r2=Xi();
         double r2s=sqrt(r2);
@@ -134,28 +138,43 @@ Vec radiance(const Ray &r, int depth, RandomLCG &Xi, int E=1){
 
         return obj.e*E + e + f.mult(radiance(Ray(x,d),depth,Xi,0));
     } 
-    else if (obj.refl == SPEC){            // Ideal SPECULAR reflection
-        return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
+    else
+    {
+        Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
+        if (obj.refl == SPECULAR){            // Ideal SPECULAR reflection
+            return obj.e + f.mult(radiance(reflRay,depth,Xi));
+        }
+
+        bool into = n.dot(nl)>0;                // Ray from outside going in?
+        double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
+        if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
+            return obj.e + f.mult(radiance(reflRay,depth,Xi));
+        Vec tdir = r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)));
+        tdir.norm();
+        double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
+        double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
+        return obj.e + f.mult(depth>2 ? (Xi()<P ?   // Russian roulette
+            radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
+        radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
     }
 
-    Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
-    bool into = n.dot(nl)>0;                // Ray from outside going in?
-    double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
-    if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
-        return obj.e + f.mult(radiance(reflRay,depth,Xi));
-    Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
-    double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
-    double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
-    return obj.e + f.mult(depth>2 ? (Xi()<P ?   // Russian roulette
-        radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
-    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
+}
+
+double centerRandom(RandomLCG& Xi)
+{
+    double r = 2*Xi();
+    return r < 1 ? sqrt(r)-1: 1-sqrt(2-r);
 }
 
 int main(int argc, char *argv[]){
     clock_t start = clock(); // MILO
-    int w=256, h=256, samps = argc==2 ? atoi(argv[1])/4 : 25; // # samples
+    int w=256, h=256;
+    int samps = argc==2 ? atoi(argv[1])/4 : 25; // # samples
     Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
-    Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r, *c=new Vec[w*h];
+    Vec cx=Vec(w*.5135/h);
+    Vec cy=(cx%cam.d).norm()*.5135;
+    Vec *c=new Vec[w*h];
+    Vec r;
 
 #pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
     for (int y=0; y<h; y++){                       // Loop over image rows
@@ -163,10 +182,10 @@ int main(int argc, char *argv[]){
         RandomLCG Xi(y*y*y); // MILO
         for (unsigned short x=0; x<w; x++)   // Loop cols
             for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
-                for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
+                for (int sx=0; sx<2; sx++, r = Vec()){        // 2x2 subpixel cols
                     for (int s=0; s<samps; s++){
-                        double r1=2*Xi(), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
-                        double r2=2*Xi(), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
+                        double dx = centerRandom(Xi);
+                        double dy = centerRandom(Xi);
                         Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
                             cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
                         r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
