@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "smallpt_SIMD", "smallpt_SIMD.vcproj", "{DAF992AD-90F2-48B5-926F-C0DA2B6BD289}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "smallpt", "smallpt.vcproj", "{DAF992AD-90F2-48B5-926F-C0DA2B6BD289}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
