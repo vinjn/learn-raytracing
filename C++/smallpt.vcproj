@@ -41,6 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories="irrXML/src"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -116,6 +117,7 @@
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
+				AdditionalIncludeDirectories="irrXML/src"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				ExceptionHandling="0"
 				RuntimeLibrary="2"
@@ -195,6 +197,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
+				AdditionalIncludeDirectories="irrXML/src"
 				ExceptionHandling="0"
 				RuntimeLibrary="2"
 				BufferSecurityCheck="false"
@@ -242,6 +245,42 @@
 	<References>
 	</References>
 	<Files>
+		<Filter
+			Name="irrXML"
+			>
+			<File
+				RelativePath=".\irrXML\src\CXMLReaderImpl.h"
+				>
+			</File>
+			<File
+				RelativePath=".\irrXML\src\fast_atof.h"
+				>
+			</File>
+			<File
+				RelativePath=".\irrXML\src\heapsort.h"
+				>
+			</File>
+			<File
+				RelativePath=".\irrXML\src\irrArray.h"
+				>
+			</File>
+			<File
+				RelativePath=".\irrXML\src\irrString.h"
+				>
+			</File>
+			<File
+				RelativePath=".\irrXML\src\irrTypes.h"
+				>
+			</File>
+			<File
+				RelativePath=".\irrXML\src\irrXML.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\irrXML\src\irrXML.h"
+				>
+			</File>
+		</Filter>
 		<File
 			RelativePath=".\Geometry.h"
 			>
