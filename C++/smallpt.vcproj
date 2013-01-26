@@ -243,7 +243,19 @@
 	</References>
 	<Files>
 		<File
+			RelativePath=".\Geometry.h"
+			>
+		</File>
+		<File
+			RelativePath=".\Scene.h"
+			>
+		</File>
+		<File
 			RelativePath=".\smallpt.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\Utils.h"
 			>
 		</File>
 	</Files>
