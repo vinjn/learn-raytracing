@@ -89,8 +89,12 @@ int main(int argc, char *argv[]){
                     for (int s = 0; s < samps; s++){
                         double dx = tentFilterRandom(Xi);
                         double dy = tentFilterRandom(Xi);
+#if 1
                         Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
                             cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.dir;
+#else
+                        Vec d = cx*(x/(double)w - .5 ) + cy*(y/(double)h - .5) + cam.dir;
+#endif
                         r = r + radiance(scene, Ray(cam.orig+d*140,d.norm()),0,Xi)*(1./samps);
                     } // Camera rays are pushed ^^^^^ forward to start in interior
                     c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
