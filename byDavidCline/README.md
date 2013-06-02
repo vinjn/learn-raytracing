@@ -1,0 +1,1 @@
+This version is reformatted by David Cline, you can refer to the [slides](http://www.slideserve.com/carol/smallpt-global-illumination-in-99-lines-of-c-a-ray-tracer-by-kevin-beason-kevinbeason) for detailed explanation, <b>highly recommended</b>
