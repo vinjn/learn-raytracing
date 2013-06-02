@@ -1,0 +1,1 @@
+[via](http://www.kevinbeason.com/smallpt/smallpt.txt)
