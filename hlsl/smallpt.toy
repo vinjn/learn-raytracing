@@ -16,8 +16,8 @@ struct Ray
     float3 d;   // direction
 };
 
-const int kDiffuseMtrl = 0;
-const int kSpecularMtrl = 1;
+static int kDiffuseMtrl = 0;
+static int kSpecularMtrl = 1;
 
 struct Sphere 
 {
@@ -28,11 +28,10 @@ struct Sphere
   int   mtrlId; // kDiffuseMtrl or kSpecularMtrl
 };
 
-// Object database stored in constants
 #define SQR(N) (N*N)
 #define NOBJECTS 10
 
-static Sphere object[NOBJECTS] =
+static Sphere objects[NOBJECTS] =
 {
     // left wall
     {
@@ -150,7 +149,7 @@ float3 nearestHit(Ray ray, out int hitId)
     hitId = -1;
     for(int i=0; i<NOBJECTS; i++) 
     {
-        float t = sphereIntersect(object[i], ray);
+        float t = sphereIntersect(objects[i], ray);
         if (t > 0)
         {
             if (t < mint) 
@@ -168,7 +167,7 @@ bool anyHit(Ray ray)
 {
     for(int i=0; i<NOBJECTS; i++)
     {
-        if (sphereIntersect(object[i], ray) > 0) 
+        if (sphereIntersect(objects[i], ray) > 0) 
             return true;
     }
     return false;
@@ -176,6 +175,7 @@ bool anyHit(Ray ray)
 
 float4 shade(float3 pt, float3 n, float3 v, int hitId)
 {
+#if 0
     float3 l = normalize(lightPosition - pt);
 
     // check if shadowed
@@ -183,14 +183,11 @@ float4 shade(float3 pt, float3 n, float3 v, int hitId)
     shadowray.o = pt;
     shadowray.d = l;
     bool shadowed = anyHit(shadowray);
-
+#endif
     // lighting
-    float4 diff = object[hitId].color * object[hitId].Kd;
-
-    float4 spec = lightColor * object[hitId].Ks;
-    float shadowFactor = 0.25 + 0.75*!shadowed; 
+    float4 diff = objects[hitId].color;
     
-    return phong(n, l, v, kShininess, diff, spec) * shadowFactor;
+    return diff;//phong(n, l, v, kShininess, diff, spec);
 }
 
 float4 main(float4 pos : SV_POSITION) : SV_TARGET
@@ -213,7 +210,7 @@ float4 main(float4 pos : SV_POSITION) : SV_TARGET
         // return float4(hitId * 0.1, 0, 0, 0);
     
         // shade surface
-        float3 n = calcSphereNormal(object[hitId], pt);
+        float3 n = calcSphereNormal(objects[hitId], pt);
         c = shade(pt, n, mainRay.d, hitId);
         
 #ifdef REFLECTION_ENABLED
@@ -226,8 +223,8 @@ float4 main(float4 pos : SV_POSITION) : SV_TARGET
         int hitId2;
         pt = nearestHit(reflray, hitId2);
         if (hitId2 != -1) {
-            n = calcSphereNormal(object[hitId2], pt);
-            c += shade(pt, n, reflray.d, hitId2) * object[hitId].Kr;
+            n = calcSphereNormal(objects[hitId2], pt);
+            c += shade(pt, n, reflray.d, hitId2) * objects[hitId].Kr;
         } else {
             c += backgroundColor;
         }
