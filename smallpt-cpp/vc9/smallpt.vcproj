@@ -220,6 +220,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\src\Renderer.h"
+			>
+		</File>
+		<File
 			RelativePath="..\src\Scene.create.cpp"
 			>
 		</File>

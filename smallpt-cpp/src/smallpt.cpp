@@ -9,51 +9,7 @@
 #include "Utils.h"
 #include "Scene.h"
 #include "../getopt/getopt.h"
-
-Vec radiance(const Scene& scene, const Ray& ray, int depth, RandomLCG& Xi)
-{
-    double t;                               // distance to intersection
-    int id = 0;                               // id of intersected object
-    if (!scene.intersect(ray, t, id)) 
-        return Vec(); // if miss, return black
-    const Geometry& hitObj = *scene.getGeometry(id); 
-    Vec hitPt = ray.orig + ray.dir*t;
-    Vec n=(hitPt - hitObj.pos).norm();
-    Vec nl = n.dot(ray.dir)<0 ? n:n*-1;
-    Vec f = hitObj.color;
-    double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // p = max(f.x, f.y, f.z)
-
-    if (++depth > 5 || !p) 
-    {
-        if (Xi() < p) 
-            f = f * (1/p); 
-        else 
-            return hitObj.emission; // Russian roulette
-    }
-    if (depth > 100) 
-        return hitObj.emission; // MILO
-
-    if (hitObj.refl == DIFFUSE)
-    {
-        double r1 = 2*M_PI*Xi();
-        double r2 = Xi();
-        double r2s = sqrt(r2);
-        Vec w = nl;
-        Vec u=(fabs(w.x)>.1 ? Vec(0,1) : Vec(1)).cross(w);
-        u.norm();
-        Vec v = w.cross(u);
-        Vec d = u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1 - r2);
-        d.norm();
-
-        return hitObj.emission + f.mult(radiance(scene, Ray(hitPt,d),depth,Xi));
-    }
-    else
-    {
-        Ray reflRay(hitPt, ray.dir - n*2*n.dot(ray.dir)); 
-        return hitObj.emission + f.mult(radiance(scene, reflRay,depth,Xi));
-    }
-}
-
+#include "Renderer.h"
 
 int main(int argc, char *argv[])
 {
@@ -62,13 +18,11 @@ int main(int argc, char *argv[])
     std::string sceneName = "cornell";
     int samps = 25; // # samples
 
+    IRenderer* renderer = new SimpleRenderer();
+
     option long_options[] =
     {
-        /* These options set a flag. */
         {"help",    no_argument,        0, 'h'},
-        //{"brief",   no_argument,       &verbose_flag, 0},
-        /* These options don't set a flag.
-        We distinguish them by their indices. */
         {"viewport",required_argument,  0, 'v'},
         {"input",   required_argument,  0, 'i'},
         {"samples", required_argument,  0, 's'},
@@ -133,18 +87,23 @@ int main(int argc, char *argv[])
 #else
                         Vec d = cx*(x/(double)w - .5 ) + cy*(y/(double)h - .5) + cam.dir;
 #endif
-                        r = r + radiance(scene, Ray(cam.orig+d*140,d.norm()),0,Xi)*(1./samps);
+                        r = r + renderer->render(scene, Ray(cam.orig+d*140,d.norm()),0,Xi)*(1./samps);
                     } // Camera rays are pushed ^^^^^ forward to start in interior
                     c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
                 }
     }
 
+    delete renderer;
+
     printf("\n%f sec\n", (float)(clock() - start)/CLOCKS_PER_SEC); // MILO
-    char imageName[100];
-    sprintf(imageName, "%s_%dX%d.ppm", sceneName.c_str(), w, h);
-    FILE *f = fopen(imageName, "w");         // Write image to PPM file.
-    fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
-    for (int i = 0; i < w*h; i++)
-        fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
-    fclose(f);
+
+    {
+        char imageName[100];
+        sprintf(imageName, "%s_%dX%d.ppm", sceneName.c_str(), w, h);
+        FILE *f = fopen(imageName, "w");         // Write image to PPM file.
+        fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
+        for (int i = 0; i < w*h; i++)
+            fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
+        fclose(f);
+    }
 }

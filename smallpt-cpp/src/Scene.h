@@ -23,7 +23,7 @@ struct Scene
         mGeomtries.push_back(geom);
     }
 
-    void addGeometries(Geometry** geoms, size_t count)
+    void addGeometries(Geometry* geoms[], size_t count)
     {
         for (size_t i=0; i < count; i++)
         {
@@ -38,11 +38,12 @@ struct Scene
             delete mGeomtries[i];
     }
 
-    inline bool intersect(const Ray &r, double &t, int &id) const
+    // brute-force
+    virtual bool intersect(const Ray &r, double &t, int &id) const
     {
         const double INF = t = 1e20;
         size_t nGeom = mGeomtries.size();
-        for(size_t i = 0;i < nGeom;i++) 
+        for (size_t i = 0;i < nGeom;i++) 
         {
             double d = mGeomtries[i]->intersect(r);
             if (d && d < t)
