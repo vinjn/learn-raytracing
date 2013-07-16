@@ -7,8 +7,9 @@
 
 enum Refl_t 
 { 
-    DIFFUSE, 
-    SPECULAR, 
+    DIFFUSE,    // ¬˛∑¥…‰
+    SPECULAR,   // ∏ﬂπ‚
+    REFRACT,    // ’€…‰
 };
 
 struct Geometry

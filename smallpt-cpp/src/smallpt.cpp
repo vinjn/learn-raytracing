@@ -9,13 +9,35 @@
 #include "Utils.h"
 #include "Scene.h"
 
+Vec Cen(50,40.8,-860);
+
+Sphere spheres[] = {//Scene: radius, position, emission, color, material
+    // center 50 40.8 62
+    // floor 0
+    // back  0
+
+    Sphere(1600, Vec(1,0,2)*3000, Vec(1,.9,.8)*1.2e1*1.56*2,Vec(), DIFFUSE), // sun
+    Sphere(1560, Vec(1,0,2)*3500,Vec(1,.5,.05)*4.8e1*1.56*2, Vec(),  DIFFUSE), // horizon sun2
+    //   Sphere(10000,Cen+Vec(0,0,-200), Vec(0.0627, 0.188, 0.569)*6e-2*8, Vec(.7,.7,1)*.25,  DIFF), // sky
+    Sphere(10000,Cen+Vec(0,0,-200), Vec(0.00063842, 0.02001478, 0.28923243)*6e-2*8, Vec(.7,.7,1)*.25,  DIFFUSE), // sky
+
+    Sphere(100000, Vec(50, -100000, 0),  Vec(),Vec(.3,.3,.3),DIFFUSE), // grnd
+    Sphere(110000, Vec(50, -110048.5, 0),  Vec(.9,.5,.05)*4,Vec(),DIFFUSE),// horizon brightener
+    Sphere(4e4, Vec(50, -4e4-30, -3000),  Vec(),Vec(.2,.2,.2),DIFFUSE),// mountains
+    //  Sphere(3.99e4, Vec(50, -3.99e4+20.045, -3000),  Vec(),Vec(.7,.7,.7),DIFF),// mountains snow
+
+    Sphere(26.5,Vec(22,26.5,42),   Vec(),Vec(1,1,1)*.596, SPECULAR), // white Mirr
+    Sphere(13,Vec(75,13,82),   Vec(),Vec(.96,.96,.96)*.96, REFRACT),// Glas
+    Sphere(22,Vec(87,22,24),   Vec(),Vec(.6,.6,.6)*.696, REFRACT)    // Glas2
+};
+
 Vec radiance(const Scene& scene, const Ray& ray, int depth, RandomLCG& Xi)
 {
     double t;                               // distance to intersection
     int id = 0;                               // id of intersected object
     if (!scene.intersect(ray, t, id)) 
         return Vec(); // if miss, return black
-    const Geometry &hitObj = *scene.mGeomtries[id]; 
+    const Geometry& hitObj = *scene.getGeometry(id); 
     Vec hitPt = ray.orig + ray.dir*t;
     Vec n=(hitPt - hitObj.pos).norm();
     Vec nl = n.dot(ray.dir)<0 ? n:n*-1;
@@ -66,18 +88,21 @@ int main(int argc, char *argv[]){
 
     // setup a simple scene             radius     position                emission        color               material
     Scene scene;
-    scene.mGeomtries.push_back(new Sphere(1e5,     Vec( 1e5+1,40.8,81.6),   Vec(),          Vec(.75,.25,.25),   DIFFUSE));// left wall 
-    scene.mGeomtries.push_back(new Sphere(1e5,     Vec(-1e5+99,40.8,81.6),  Vec(),          Vec(.25,.25,.75),   DIFFUSE));// right wall
-    scene.mGeomtries.push_back(new Sphere(1e5,     Vec(50,40.8, 1e5),       Vec(),          Vec(.75,.75,.75),   DIFFUSE));// back wall
-    scene.mGeomtries.push_back(new Sphere(1e5,     Vec(50,40.8,-1e5+170),   Vec(),          Vec(),              DIFFUSE));// front wall
-    scene.mGeomtries.push_back(new Sphere(1e5,     Vec(50, 1e5, 81.6),      Vec(),          Vec(.75,.75,.75),   DIFFUSE));// bottom wall
-    scene.mGeomtries.push_back(new Sphere(1e5,     Vec(50,-1e5+81.6,81.6),  Vec(),          Vec(.75,.75,.75),   DIFFUSE));// top wall
 
-    scene.mGeomtries.push_back(new Sphere(16.5,    Vec(27,16.5,47),         Vec(),          Vec(1,1,1)*.999,    SPECULAR));// mirror 1
-    scene.mGeomtries.push_back(new Sphere(20.5,    Vec(73,16.5,78),         Vec(),          Vec(1,1,1)*.999,    SPECULAR));// mirror 2
-    scene.mGeomtries.push_back(new Sphere(10.5,    Vec(27,16.5,100),        Vec(),          Vec(1,1,1)*.999,    SPECULAR));// mirror 3
+    scene.addGeometries(spheres, _countof(spheres));
 
-    scene.mGeomtries.push_back(new Sphere(600,     Vec(50,681.6-.27,81.6),  Vec(12,12,12),  Vec(),              DIFFUSE)); // the white light
+    scene.addGeometry(new Sphere(1e5,     Vec( 1e5+1,40.8,81.6),   Vec(),          Vec(.75,.25,.25),   DIFFUSE));// left wall 
+    scene.addGeometry(new Sphere(1e5,     Vec(-1e5+99,40.8,81.6),  Vec(),          Vec(.25,.25,.75),   DIFFUSE));// right wall
+    scene.addGeometry(new Sphere(1e5,     Vec(50,40.8, 1e5),       Vec(),          Vec(.75,.75,.75),   DIFFUSE));// back wall
+    scene.addGeometry(new Sphere(1e5,     Vec(50,40.8,-1e5+170),   Vec(),          Vec(),              DIFFUSE));// front wall
+    scene.addGeometry(new Sphere(1e5,     Vec(50, 1e5, 81.6),      Vec(),          Vec(.75,.75,.75),   DIFFUSE));// bottom wall
+    scene.addGeometry(new Sphere(1e5,     Vec(50,-1e5+81.6,81.6),  Vec(),          Vec(.75,.75,.75),   DIFFUSE));// top wall
+
+    scene.addGeometry(new Sphere(16.5,    Vec(27,16.5,47),         Vec(),          Vec(1,1,1)*.999,    SPECULAR));// mirror 1
+    scene.addGeometry(new Sphere(20.5,    Vec(73,16.5,78),         Vec(),          Vec(1,1,1)*.999,    SPECULAR));// mirror 2
+    scene.addGeometry(new Sphere(10.5,    Vec(27,16.5,100),        Vec(),          Vec(1,1,1)*.999,    SPECULAR));// mirror 3
+
+    scene.addGeometry(new Sphere(600,     Vec(50,681.6-.27,81.6),  Vec(12,12,12),  Vec(),              DIFFUSE)); // the white light
 
 #pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
     for (int y = 0; y < h; y++){                       // Loop over image rows

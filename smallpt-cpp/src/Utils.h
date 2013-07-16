@@ -14,21 +14,54 @@ struct RandomLCG
 struct Vec 
 {   
     double x, y, z;                  // position, also color (r, g,b)
-    Vec(double x_= 0, double y_= 0, double z_= 0){ x= x_; y= y_; z= z_; }
-    Vec operator+(const Vec &b) const { return Vec(x + b.x, y + b.y, z + b.z); }
-    Vec operator-(const Vec &b) const { return Vec(x-b.x, y-b.y, z-b.z); }
-    Vec operator*(double b) const { return Vec(x * b, y * b, z * b); }
-    Vec mult(const Vec &b) const { return Vec(x * b.x, y * b.y, z * b.z); }
-    Vec& norm(){ return *this = *this * (1/sqrt(x * x + y * y + z * z)); }
-    double dot(const Vec &b) const { return x * b.x + y * b.y + z * b.z; } // cross:
-    Vec cross(const Vec &b){return Vec(y * b.z-z * b.y, z * b.x-x * b.z, x * b.y-y * b.x);}
+
+    Vec(double x_= 0, double y_= 0, double z_= 0)
+    { 
+        x = x_; 
+        y = y_; 
+        z = z_; 
+    }
+
+    Vec operator+(const Vec &b) const 
+    { 
+        return Vec(x + b.x, y + b.y, z + b.z); 
+    }
+
+    Vec operator-(const Vec &b) const 
+    { 
+        return Vec(x-b.x, y-b.y, z-b.z); 
+    }
+
+    Vec operator*(double b) const 
+    { 
+        return Vec(x * b, y * b, z * b);
+    }
+
+    Vec mult(const Vec &b) const
+    { 
+        return Vec(x * b.x, y * b.y, z * b.z);
+    }
+
+    Vec& norm()
+    { 
+        return *this = *this * (1/sqrt(x * x + y * y + z * z)); 
+    }
+
+    double dot(const Vec &b) const
+    { 
+        return x * b.x + y * b.y + z * b.z; 
+    }
+
+    Vec cross(const Vec &b)
+    {
+        return Vec(y * b.z-z * b.y, z * b.x-x * b.z, x * b.y-y * b.x);
+    }
 };
 
 struct Ray 
 {
     Vec orig, dir; 
-    Ray(const Vec &o_, const Vec &d_) :
-    orig(o_), dir(d_) {} 
+    Ray(const Vec &o_, const Vec &d_) : orig(o_), dir(d_) {} 
 };
 
 inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
