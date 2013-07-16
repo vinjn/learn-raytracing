@@ -6,9 +6,13 @@
 #include "Geometry.h"
 #include "irrXML.h"
 #include <vector>
+#include <string>
 
 struct Scene
 {
+    static void printBuiltInSceneNames();
+    static bool createBuiltInScene(Scene* pScene, const std::string& sceneName);
+
     Geometry* getGeometry(int id) const
     {
         return mGeomtries[id];
@@ -19,11 +23,11 @@ struct Scene
         mGeomtries.push_back(geom);
     }
 
-    void addGeometries(Geometry* geoms, size_t count)
+    void addGeometries(Geometry** geoms, size_t count)
     {
         for (size_t i=0; i < count; i++)
         {
-            addGeometry(geoms + i);
+            addGeometry(geoms[i]);
         }
     }
 
