@@ -16,9 +16,9 @@ int main(int argc, char *argv[])
     clock_t start = clock(); // MILO
     int w = 256, h = 256;
     std::string sceneName = "cornell";
-    int samps = 25; // # samples
+    std::string rendererName = "simple";
 
-    IRenderer* renderer = new SimpleRenderer();
+    int samps = 25; // # samples
 
     option long_options[] =
     {
@@ -26,24 +26,26 @@ int main(int argc, char *argv[])
         {"viewport",required_argument,  0, 'v'},
         {"input",   required_argument,  0, 'i'},
         {"samples", required_argument,  0, 's'},
+        {"renderer",required_argument,  0, 'r'},
         {0, 0, 0, 0}
     };
 
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long (argc, argv, "hv:i:s:", long_options, &option_index)) != -1)
+    while ((opt = getopt_long (argc, argv, "hv:i:s:r:", long_options, &option_index)) != -1)
     {
         switch (opt)
         {
         case 'h':
             {
-                fprintf(stdout, "smallpt --size 256 --scene cornell --samples 100\n\n");
+                fprintf(stdout, "smallpt --renderer simple --viewport 256 --input cornell --samples 100\n\n");
                 Scene::printBuiltInSceneNames();
                 exit(0);
             }
         case 'v':{w = h = atoi(optarg); break;}
         case 'i':{sceneName = optarg; break;}
         case 's':{samps = atoi(optarg)/4; break;}
+        case 'r':{rendererName = optarg; break;}
         default: exit(0);
         }
     }
@@ -54,6 +56,12 @@ int main(int argc, char *argv[])
         printf ("\n");
         exit(0);
     }
+
+    IRenderer* renderer = NULL;
+    if (rendererName == "forward")
+        renderer = new ForwardRenderer();
+    else
+        renderer = new SimpleRenderer();
 
     Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
     Vec cx = Vec(w*.5135/h);
@@ -69,7 +77,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    fprintf(stdout, "Rendering scene: %s\n", sceneName.c_str());
+    fprintf(stdout, "Rendering scene: %s with %s renderer\n", sceneName.c_str(), rendererName.c_str());
 
 #pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
     for (int y = 0; y < h; y++){                       // Loop over image rows
@@ -87,7 +95,7 @@ int main(int argc, char *argv[])
 #else
                         Vec d = cx*(x/(double)w - .5 ) + cy*(y/(double)h - .5) + cam.dir;
 #endif
-                        r = r + renderer->render(scene, Ray(cam.orig+d*140,d.norm()),0,Xi)*(1./samps);
+                        r = r + renderer->radiance(scene, Ray(cam.orig+d*140,d.norm()),0,Xi)*(1./samps);
                     } // Camera rays are pushed ^^^^^ forward to start in interior
                     c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
                 }
@@ -99,7 +107,7 @@ int main(int argc, char *argv[])
 
     {
         char imageName[100];
-        sprintf(imageName, "%s_%dX%d.ppm", sceneName.c_str(), w, h);
+        sprintf(imageName, "%s_%s_%dX%d.ppm", sceneName.c_str(), rendererName.c_str(), w, h);
         FILE *f = fopen(imageName, "w");         // Write image to PPM file.
         fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
         for (int i = 0; i < w*h; i++)

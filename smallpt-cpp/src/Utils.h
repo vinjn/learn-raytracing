@@ -22,12 +22,12 @@ struct Vec
         z = z_; 
     }
 
-    Vec operator+(const Vec &b) const 
+    Vec operator+(const Vec& b) const 
     { 
         return Vec(x + b.x, y + b.y, z + b.z); 
     }
 
-    Vec operator-(const Vec &b) const 
+    Vec operator-(const Vec& b) const 
     { 
         return Vec(x-b.x, y-b.y, z-b.z); 
     }
@@ -37,7 +37,7 @@ struct Vec
         return Vec(x * b, y * b, z * b);
     }
 
-    Vec mult(const Vec &b) const
+    Vec mult(const Vec& b) const
     { 
         return Vec(x * b.x, y * b.y, z * b.z);
     }
@@ -47,21 +47,26 @@ struct Vec
         return *this = *this * (1/sqrt(x * x + y * y + z * z)); 
     }
 
-    double dot(const Vec &b) const
+    double dot(const Vec& b) const
     { 
         return x * b.x + y * b.y + z * b.z; 
     }
 
-    Vec cross(const Vec &b)
+    Vec cross(const Vec& b)
     {
         return Vec(y * b.z-z * b.y, z * b.x-x * b.z, x * b.y-y * b.x);
+    }
+
+    static Vec reflect(const Vec& incident, const Vec& normal)
+    {
+        return incident - normal * incident.dot(normal) * 2;
     }
 };
 
 struct Ray 
 {
     Vec orig, dir; 
-    Ray(const Vec &o_, const Vec &d_) : orig(o_), dir(d_) {} 
+    Ray(const Vec& o, const Vec& d) : orig(o), dir(d) {} 
 };
 
 inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
