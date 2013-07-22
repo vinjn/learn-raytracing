@@ -3,6 +3,7 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <float.h>
 
 struct RandomLCG 
 {
@@ -24,6 +25,10 @@ struct Vec
             double r, g, b;
         };
     };
+
+    static Vec axisX(){return Vec(1, 0, 0);}
+    static Vec axisY(){return Vec(0, 1, 0);}
+    static Vec axisZ(){return Vec(0, 0, 0);}
 
     Vec(double x_= 0, double y_= 0, double z_= 0)
     { 

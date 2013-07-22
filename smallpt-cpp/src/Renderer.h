@@ -13,40 +13,44 @@ struct DiffuseOnlyRenderer : public IRenderer
 {
     Vec radiance(const IScene& scene, const Ray& ray, int depth, RandomLCG& Xi)
     {
-        double t;                               // distance to intersection
-        int id = 0;                               // id of intersected object
-        if (!scene.intersect(ray, t, id)) 
+        double hitDist;                               // distance to intersection
+        int hitId = 0;                               // id of intersected object
+        if (!scene.intersect(ray, hitDist, hitId)) 
             return Vec(); // if miss, return black
-        const Geometry& hitObj = *scene.getGeometry(id); 
-        Vec hitPt = ray.orig + ray.dir*t;
-        Vec hitNorm=(hitPt - hitObj.pos).norm();
-        Vec nl = hitNorm.dot(ray.dir)<0 ? hitNorm:hitNorm*-1;
-        Vec f = hitObj.color;
-        double p = max(f.r, f.g, f.b);
 
-        if (++depth > 5 || !p) 
+        const Geometry& hitObj = *scene.getGeometry(hitId); 
+        Vec color = hitObj.color;
+        double prob = max(color.r, color.g, color.b);
+
+        // Russian roulette
+        if (++depth > 5 || !prob) 
         {
-            if (Xi() < p) 
-                f = f * (1/p); 
+            if (Xi() < prob) 
+                color = color * (1/prob); 
             else 
-                return hitObj.emission; // Russian roulette
+                return hitObj.emission;
         }
-        if (depth > 100) 
-            return hitObj.emission; // MILO
+
+        Vec hitPt = ray.orig + ray.dir * hitDist;
+        Vec hitNorm=(hitPt - hitObj.pos).norm();
+        Vec nl = hitNorm.dot(ray.dir) < 0 ? hitNorm : hitNorm * -1;
 
         //if (hitObj.refl == DIFFUSE)
         {
+            // axis: u/v/w
+            Vec w = nl;
+            Vec u = fabs(w.x)>.1 ? Vec::axisY() : Vec::axisX();
+            u = (u.cross(w)).norm();
+            Vec v = w.cross(u);
+
+            // uniformly distributed random sampling
             double r1 = 2*M_PI*Xi();
             double r2 = Xi();
             double r2s = sqrt(r2);
-            Vec w = nl;
-            Vec u=(fabs(w.x)>.1 ? Vec(0,1) : Vec(1)).cross(w);
-            u.norm();
-            Vec v = w.cross(u);
-            Vec d = u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1 - r2);
-            d.norm();
+            Vec sampDir = u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1 - r2);
+            sampDir.norm();
 
-            return hitObj.emission + f.mult(radiance(scene, Ray(hitPt,d),depth,Xi));
+            return hitObj.emission + color.mult(radiance(scene, Ray(hitPt, sampDir), depth, Xi));
         }
     }
 };

@@ -80,7 +80,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    fprintf(stdout, "Rendering scene: %s with %s renderer\n", sceneName.c_str(), rendererName.c_str());
+    char imageName[100];
+    sprintf(imageName, "%s_%s_%dX%dX%d.ppm", 
+        sceneName.c_str(), rendererName.c_str(), 
+        width, height, nSamples*4);
+    fprintf(stdout, "Rendering to %s\n", imageName);
 
 #pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
     for (int y = 0; y < height; y++)
@@ -122,10 +126,6 @@ int main(int argc, char *argv[])
     printf("\n%f sec\n", (float)(clock() - start)/CLOCKS_PER_SEC); // MILO
 
     {
-        char imageName[100];
-        sprintf(imageName, "%s_%s_%dX%dX%d.ppm", 
-            sceneName.c_str(), rendererName.c_str(), 
-            width, height, nSamples);
         FILE *f = fopen(imageName, "w");         // Write image to PPM file.
         fprintf(f, "P3\n%d %d\n%d\n", width, height, 255);
         for (int i = 0; i < width*height; i++)
