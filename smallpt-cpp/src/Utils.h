@@ -13,7 +13,17 @@ struct RandomLCG
 
 struct Vec 
 {   
-    double x, y, z;                  // position, also color (r, g,b)
+    union
+    {
+        struct  
+        {
+            double x, y, z;
+        };
+        struct  
+        {
+            double r, g, b;
+        };
+    };
 
     Vec(double x_= 0, double y_= 0, double z_= 0)
     { 
@@ -77,6 +87,14 @@ inline double tentFilterRandom(RandomLCG& Xi)
 {
     double r = 2 * Xi();
     return r < 1 ? sqrt(r)-1: 1-sqrt(2-r);
+}
+
+template <typename T> 
+T max(T a, T b, T c)
+{
+    return ( a > b && a > c ) ? a : 
+        ( b > c ) ? b :
+        c;
 }
 
 #endif // __SMALLPT_UTILS_H__

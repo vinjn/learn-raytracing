@@ -1,6 +1,6 @@
 // smallpt, a Path Tracer by Kevin Beason, 2008
 // Usage: time ./smallpt 5000 && xv image.ppm
-// refactored by vinjn.z@gmail.com
+// enchanced by vinjn.z@gmail.com
 
 #include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
 #include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
@@ -14,11 +14,10 @@
 int main(int argc, char *argv[])
 {
     clock_t start = clock(); // MILO
-    int w = 256, h = 256;
+    int width = 256, height = 256;
     std::string sceneName = "cornell";
     std::string rendererName = "simple";
-
-    int samps = 25; // # samples
+    int nSamples = 25; // # samples
 
     option long_options[] =
     {
@@ -39,12 +38,12 @@ int main(int argc, char *argv[])
         case 'h':
             {
                 fprintf(stdout, "smallpt --renderer simple --viewport 256 --input cornell --samples 100\n\n");
-                Scene::printBuiltInSceneNames();
+                IScene::printBuiltInSceneNames();
                 exit(0);
             }
-        case 'v':{w = h = atoi(optarg); break;}
+        case 'v':{width = height = atoi(optarg); break;}
         case 'i':{sceneName = optarg; break;}
-        case 's':{samps = atoi(optarg)/4; break;}
+        case 's':{nSamples = atoi(optarg)/4; break;}
         case 'r':{rendererName = optarg; break;}
         default: exit(0);
         }
@@ -58,60 +57,79 @@ int main(int argc, char *argv[])
     }
 
     IRenderer* renderer = NULL;
-    if (rendererName == "forward")
-        renderer = new ForwardRenderer();
-    else
-        renderer = new SimpleRenderer();
+    {
+        if (rendererName == "forward")
+            renderer = new ForwardRenderer();
+        else if (rendererName == "diffuse")
+            renderer = new DiffuseOnlyRenderer();
+        else
+            renderer = new SimpleRenderer();
+    }
 
     Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
-    Vec cx = Vec(w*.5135/h);
+    Vec cx = Vec(width*.5135/height);
     Vec cy=(cx.cross(cam.dir)).norm()*.5135;
-    Vec *c = new Vec[w*h];
+    Vec* colorBuf = new Vec[width*height];
     Vec r;
 
-    Scene scene;
-    if (!Scene::createBuiltInScene(&scene, sceneName))
+    IScene* scene = new SimpleScene();
+    if (!IScene::createBuiltInScene(scene, sceneName))
     {
         fprintf(stderr, "Invalid scene name: %s\n", sceneName.c_str());
-        Scene::printBuiltInSceneNames();
+        IScene::printBuiltInSceneNames();
         exit(1);
     }
 
     fprintf(stdout, "Rendering scene: %s with %s renderer\n", sceneName.c_str(), rendererName.c_str());
 
 #pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
-    for (int y = 0; y < h; y++){                       // Loop over image rows
-        fprintf(stderr,"\rRendering (%d spp) %5.2f%%",samps*4,100.*y/(h - 1));
+    for (int y = 0; y < height; y++)
+    {
+        // Loop over image rows
+        fprintf(stderr,"\rRendering (%d spp) %5.2f%%",nSamples*4,100.*y/(height - 1));
         RandomLCG Xi(y*y*y); // MILO
-        for (unsigned short x = 0; x < w; x++)   // Loop cols
-            for (int sy = 0, i=(h - y-1)*w+x; sy < 2; sy++)     // 2x2 subpixel rows
-                for (int sx = 0; sx < 2; sx++, r = Vec()){        // 2x2 subpixel cols
-                    for (int s = 0; s < samps; s++){
+        for (unsigned short x = 0; x < width; x++)
+        {
+            // Loop cols
+            int loc = (height - y - 1) * width + x;
+            for (int sy = 0; sy < 2; sy++) 
+            {
+                // 2x2 subpixel rows
+                for (int sx = 0; sx < 2; sx++, r = Vec())
+                {
+                    // 2x2 subpixel cols
+                    for (int s = 0; s < nSamples; s++)
+                    {
                         double dx = tentFilterRandom(Xi);
                         double dy = tentFilterRandom(Xi);
 #if 1
-                        Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
-                            cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.dir;
+                        Vec d = cx*( ( (sx+.5 + dx)/2 + x)/width - .5) +
+                            cy*( ( (sy+.5 + dy)/2 + y)/height - .5) + cam.dir;
 #else
-                        Vec d = cx*(x/(double)w - .5 ) + cy*(y/(double)h - .5) + cam.dir;
+                        Vec d = cx*(x/(double)width - .5 ) + cy*(y/(double)height - .5) + cam.dir;
 #endif
-                        r = r + renderer->radiance(scene, Ray(cam.orig+d*140,d.norm()),0,Xi)*(1./samps);
+                        r = r + renderer->radiance(*scene, Ray(cam.orig+d*140,d.norm()),0,Xi)*(1./nSamples);
                     } // Camera rays are pushed ^^^^^ forward to start in interior
-                    c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
+                    colorBuf[loc] = colorBuf[loc] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
                 }
+            }
+        }
     }
 
     delete renderer;
+    delete scene;
 
     printf("\n%f sec\n", (float)(clock() - start)/CLOCKS_PER_SEC); // MILO
 
     {
         char imageName[100];
-        sprintf(imageName, "%s_%s_%dX%d.ppm", sceneName.c_str(), rendererName.c_str(), w, h);
+        sprintf(imageName, "%s_%s_%dX%dX%d.ppm", 
+            sceneName.c_str(), rendererName.c_str(), 
+            width, height, nSamples);
         FILE *f = fopen(imageName, "w");         // Write image to PPM file.
-        fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
-        for (int i = 0; i < w*h; i++)
-            fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
+        fprintf(f, "P3\n%d %d\n%d\n", width, height, 255);
+        for (int i = 0; i < width*height; i++)
+            fprintf(f,"%d %d %d ", toInt(colorBuf[i].x), toInt(colorBuf[i].y), toInt(colorBuf[i].z));
         fclose(f);
     }
 }

@@ -8,11 +8,31 @@
 #include <vector>
 #include <string>
 
-struct Scene
+struct IScene
 {
-    static void printBuiltInSceneNames();
-    static bool createBuiltInScene(Scene* pScene, const std::string& sceneName);
+    virtual ~IScene(){}
 
+    static void printBuiltInSceneNames();
+    static bool createBuiltInScene(IScene* pScene, const std::string& sceneName);
+
+    virtual Geometry* getGeometry(int id) const = 0;  
+
+    void addGeometries(Geometry* geoms[], size_t count)
+    {
+        for (size_t i=0; i < count; i++)
+        {
+            addGeometry(geoms[i]);
+        }
+    }
+
+    virtual bool intersect(const Ray& ray, double& hitDist, int& hitId) const = 0;
+
+protected:
+    virtual void addGeometry(Geometry* geom) = 0;
+};
+
+struct SimpleScene : public IScene
+{
     Geometry* getGeometry(int id) const
     {
         return mGeomtries[id];
@@ -23,15 +43,7 @@ struct Scene
         mGeomtries.push_back(geom);
     }
 
-    void addGeometries(Geometry* geoms[], size_t count)
-    {
-        for (size_t i=0; i < count; i++)
-        {
-            addGeometry(geoms[i]);
-        }
-    }
-
-    virtual ~Scene()
+    virtual ~SimpleScene()
     {
         size_t nGeom = mGeomtries.size();
         for (size_t i=0; i < nGeom; i++)
@@ -39,20 +51,20 @@ struct Scene
     }
 
     // brute-force
-    virtual bool intersect(const Ray &r, double &t, int &id) const
+    bool intersect(const Ray& ray, double& hitDist, int& hitId) const
     {
-        const double INF = t = 1e20;
+        const double kInfinity = hitDist = 1e20;
         size_t nGeom = mGeomtries.size();
         for (size_t i = 0;i < nGeom;i++) 
         {
-            double d = mGeomtries[i]->intersect(r);
-            if (d && d < t)
+            double d = mGeomtries[i]->intersect(ray);
+            if (d && d < hitDist)
             {
-                t = d;
-                id = i;
+                hitDist = d;
+                hitId = i;
             }
         }
-        return t < INF;
+        return hitDist < kInfinity;
     }
 
 protected:

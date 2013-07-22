@@ -2,7 +2,7 @@
 
 namespace
 {
-    void createScene_cornell(Scene* pScene)
+    void createScene_cornell(IScene* pScene)
     {
         Geometry* geoms[] = {//Scene: radius, position, emission, color, material
             new Sphere(1e5,     Vec( 1e5+1,40.8,81.6),   Vec(),          Vec(.75,.25,.25),   DIFFUSE),// left wall 
@@ -12,16 +12,16 @@ namespace
             new Sphere(1e5,     Vec(50, 1e5, 81.6),      Vec(),          Vec(.75,.75,.75),   DIFFUSE),// bottom wall
             new Sphere(1e5,     Vec(50,-1e5+81.6,81.6),  Vec(),          Vec(.75,.75,.75),   DIFFUSE),// top wall
 
-            new Sphere(16.5,    Vec(27,16.5,47),         Vec(),          Vec(1,1,1)*.999,    SPECULAR),// mirror 1
-            new Sphere(20.5,    Vec(73,16.5,78),         Vec(),          Vec(1,1,1)*.999,    SPECULAR),// mirror 2
-            new Sphere(10.5,    Vec(27,16.5,100),        Vec(),          Vec(1,1,1)*.999,    SPECULAR),// mirror 3
+            new Sphere(16.5,    Vec(27,16.5,47),         Vec(),          Vec(1,1,1)*.999,    SPECULAR),// mirror
+            new Sphere(20.5,    Vec(73,16.5,78),         Vec(),          Vec(1,1,1)*.999,    REFRACT), // glass
+            new Sphere(10.5,    Vec(27,46.5,100),        Vec(),          Vec(1,1,1)*.999,    DIFFUSE),// mirror
 
             new Sphere(600,     Vec(50,681.6-.27,81.6),  Vec(12,12,12),  Vec(),              DIFFUSE), // the white light
         };
         pScene->addGeometries(geoms, _countof(geoms));
     }
 
-    void createScene_sky(Scene* pScene)
+    void createScene_sky(IScene* pScene)
     {
         // Idea stolen from Picogen http://picogen.org/ by phresnel/greenhybrid
         Vec Cen(50,40.8,-860);
@@ -47,7 +47,7 @@ namespace
         pScene->addGeometries(geoms, _countof(geoms));
     }
 
-    void createScene_nightsky(Scene* pScene)
+    void createScene_nightsky(IScene* pScene)
     {
         Geometry* geoms[] = {//Scene: radius, position, emission, color, material
             //center 50 40.8 62
@@ -78,7 +78,7 @@ namespace
         pScene->addGeometries(geoms, _countof(geoms));
     }
 
-    void createScene_island(Scene* pScene)
+    void createScene_island(IScene* pScene)
     {
         // Inspired by cover of "Time Planet Earth: An Illustrated History"
         Vec Cen(50,-20,-860);
@@ -106,7 +106,7 @@ namespace
         pScene->addGeometries(geoms, _countof(geoms));
     }
 
-    void createScene_vista(Scene* pScene)
+    void createScene_vista(IScene* pScene)
     {
         Vec Cen(50,-20,-860);
         Geometry* geoms[] = {//Scene: radius, position, emission, color, material
@@ -151,7 +151,7 @@ namespace
         pScene->addGeometries(geoms, _countof(geoms));
     }
 
-    void createScene_overlap(Scene* pScene)
+    void createScene_overlap(IScene* pScene)
     {
         double D=50;
         double R=40;
@@ -164,7 +164,7 @@ namespace
         pScene->addGeometries(geoms, _countof(geoms));
     }
 
-    void createScene_wada(Scene* pScene)
+    void createScene_wada(IScene* pScene)
     {
         double R=60;
         //double R=120;
@@ -194,7 +194,7 @@ namespace
         pScene->addGeometries(geoms, _countof(geoms));
     }
 
-    void createScene_wada2(Scene* pScene)
+    void createScene_wada2(IScene* pScene)
     {
         //double R=60;
         double R=120;     // radius
@@ -218,7 +218,7 @@ namespace
         pScene->addGeometries(geoms, _countof(geoms));
     }
 
-    void createScene_forest(Scene* pScene)
+    void createScene_forest(IScene* pScene)
     {
         Vec tc(0.0588, 0.361, 0.0941);
         Vec sc = Vec(1,1,1)*.7;
@@ -264,7 +264,7 @@ namespace
     ONE_ENTRY(wada2);\
     ONE_ENTRY(forest);
 
-bool Scene::createBuiltInScene( Scene* pScene, const std::string& sceneName )
+bool IScene::createBuiltInScene( IScene* pScene, const std::string& sceneName )
 {
 #define ONE_ENTRY(tag) if (sceneName == #tag) { createScene_##tag(pScene); return true; }
     SCENE_ENTRY_LIST;
@@ -272,7 +272,7 @@ bool Scene::createBuiltInScene( Scene* pScene, const std::string& sceneName )
     return false;
 }
 
-void Scene::printBuiltInSceneNames()
+void IScene::printBuiltInSceneNames()
 {
     fprintf(stdout, "Built-in scene names: \n");
 #define ONE_ENTRY(tag) fprintf(stdout, "\t%s\n", #tag);
