@@ -4,6 +4,7 @@
 
 struct IRenderer
 {
+    // compute the radiance estimate along ray
     virtual Vec radiance(const IScene& scene, const Ray& ray, int depth, RandomLCG& Xi) = 0;
 };
 
@@ -13,44 +14,48 @@ struct DiffuseOnlyRenderer : public IRenderer
 {
     Vec radiance(const IScene& scene, const Ray& ray, int depth, RandomLCG& Xi)
     {
-        double hitDist;                               // distance to intersection
-        int hitId = 0;                               // id of intersected object
+        double hitDist;
+        int hitId = 0;
         if (!scene.intersect(ray, hitDist, hitId)) 
             return Vec(); // if miss, return black
 
         const Geometry& hitObj = *scene.getGeometry(hitId); 
-        Vec color = hitObj.color;
-        double prob = max(color.r, color.g, color.b);
+        Vec hitColor = hitObj.color;
 
-        // Russian roulette
-        if (++depth > 5 || !prob) 
+        // use maximum reflectivity amount of Russian roulette
+        double maxRefl = max(hitColor.r, hitColor.g, hitColor.b);
+        if (++depth > 5 || !maxRefl) 
         {
-            if (Xi() < prob) 
-                color = color * (1/prob); 
+            if (Xi() < maxRefl) 
+                hitColor = hitColor * (1.0 / maxRefl); 
             else 
                 return hitObj.emission;
         }
 
         Vec hitPt = ray.orig + ray.dir * hitDist;
-        Vec hitNorm=(hitPt - hitObj.pos).norm();
-        Vec nl = hitNorm.dot(ray.dir) < 0 ? hitNorm : hitNorm * -1;
+        Vec hitNorm = (hitPt - hitObj.pos).norm();
 
-        //if (hitObj.refl == DIFFUSE)
+        if (hitObj.refl == DIFFUSE)
         {
-            // axis: u/v/w
-            Vec w = nl;
-            Vec u = fabs(w.x)>.1 ? Vec::axisY() : Vec::axisX();
-            u = (u.cross(w)).norm();
-            Vec v = w.cross(u);
+            // axis: newX/newY/newZ
+            Vec newZ = hitNorm.dot(ray.dir) < 0 ? hitNorm : hitNorm * -1; // properly oriented surface normal;
+            Vec newX = fabs(newZ.x) > .1 ? Vec::axisY() : Vec::axisX();
+            newX = (newX.cross(newZ)).norm();
+            Vec newY = newZ.cross(newX);
 
-            // uniformly distributed random sampling
-            double r1 = 2*M_PI*Xi();
-            double r2 = Xi();
-            double r2s = sqrt(r2);
-            Vec sampDir = u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1 - r2);
+            // uniformly distributed random direction
+            double angle = 2*M_PI*Xi(); // angle around
+            double radius = Xi();   // distance from center
+            double radius_sqrt = sqrt(radius);
+            Vec sampDir = newX*cos(angle)*radius_sqrt + newY*sin(angle)*radius_sqrt + newZ*sqrt(1 - radius);
             sampDir.norm();
 
-            return hitObj.emission + color.mult(radiance(scene, Ray(hitPt, sampDir), depth, Xi));
+            return hitObj.emission + hitColor.mult(radiance(scene, Ray(hitPt, sampDir), depth, Xi));
+        }
+        else
+        {
+            Ray reflRay(hitPt, Vec::reflect(ray.dir, hitNorm));
+            return hitObj.emission + hitColor.mult(radiance(scene, reflRay, depth, Xi));
         }
     }
 };
