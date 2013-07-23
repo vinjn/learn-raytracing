@@ -1,36 +1,67 @@
-// The first version is //sw/devtools/SDK/9.5/SDK/MEDIA/HLSL/scene_raytrace.fx
-// The second version is https://HlslShaderToy/samples/scene_raytrace.toy
+// The first version is from NVIDIA //sw/devtools/SDK/9.5/SDK/MEDIA/HLSL/scene_raytrace.fx
+// The second version is https://github.com/vinjn/HlslShaderToy/blob/master/samples/scene_raytrace.toy
+// And this is the third version
 
 // Checkered.jpg
-
-#define REFLECTION_ENABLED
-
+ 
 static float4 backgroundColor = { 0.1, 0.1, 0.1, 1.0 };
-
+ 
 #define kAspect .5135
 #define kEpsilon 0.001
 
+#define M_PI  3.14159265f
+
+// Input: It uses texture coords as the random number seed.
+// Output: Random number: [0,1), that is between 0.0 and 0.999999... inclusive.
+// Author: Michael Pohoreski
+// Copyright: Copyleft 2012 :-)
+float random( float2 p )
+{
+  // We need irrationals for pseudo randomness.
+  // Most (all?) known transcendental numbers will (generally) work.
+  const float2 r = float2(
+    23.1406926327792690,  // e^pi (Gelfond's constant)
+     2.6651441426902251); // 2^sqrt(2) (Gelfond–Schneider constant)
+  return frac( cos( fmod( 123456789., 1e-7 + 256. * dot(p,r) ) ) );  
+}
+
+// also changes the valud of p
+float rand( inout float2 p )
+{
+	p.x = random(p);
+	return p.x;
+}
+
+inline float tentFilterRandom(inout float2 p)
+{
+    float r = 2 * rand(p);
+    return r < 1 ? sqrt(r)-1: 1-sqrt(2-r);
+}
+
 struct Ray 
 {
-    float3 o;   // origin
-    float3 d;   // direction
+    float3 orig;
+    float3 dir;
 };
+ 
+static int DIFFUSE = 0;
+static int SPECULAR = 1;
 
-static int kDiffuseMtrl = 0;
-static int kSpecularMtrl = 1;
-
+static const float3 axisX = {1, 0, 0};
+static const float3 axisY = {0, 1, 0};
+ 
 struct Sphere 
 {
-  float3 center;
+  float3 pos;
   float rad2;   // radius^2
   float3 color;
   float3 emission;
-  int   mtrlId; // kDiffuseMtrl or kSpecularMtrl
+  int   refl; // DIFFUSE or SPECULAR
 };
-
+ 
 #define SQR(N) (N*N)
 #define NOBJECTS 10
-
+ 
 static Sphere objects[NOBJECTS] =
 {
     // left wall
@@ -39,7 +70,7 @@ static Sphere objects[NOBJECTS] =
         SQR(1e5),
         .75,.25,.25,
         0.0, 0.0, 0.0,
-        kDiffuseMtrl,
+        DIFFUSE,
     },
     // right wall
     {
@@ -47,7 +78,7 @@ static Sphere objects[NOBJECTS] =
         SQR(1e5),
         .25,.25,.75,
         0.0, 0.0, 0.0,
-        kDiffuseMtrl,
+        DIFFUSE,
     },  
     // back wall
     {
@@ -55,7 +86,7 @@ static Sphere objects[NOBJECTS] =
         SQR(1e5),
         .75,.75,.75,
         0.0, 0.0, 0.0,
-        kDiffuseMtrl,
+        DIFFUSE,
     },  
     // front wall
     {
@@ -63,7 +94,7 @@ static Sphere objects[NOBJECTS] =
         SQR(1e5),
         0.0, 0.0, 0.0,
         0.0, 0.0, 0.0,
-        kDiffuseMtrl,
+        DIFFUSE,
     },  
     // bottom wall
     {
@@ -71,7 +102,7 @@ static Sphere objects[NOBJECTS] =
         SQR(1e5),
         .75,.75,.75,
         0.0, 0.0, 0.0,
-        kDiffuseMtrl,
+        DIFFUSE,
     },  
     // top wall
     {
@@ -79,7 +110,7 @@ static Sphere objects[NOBJECTS] =
         SQR(1e5),
         .75,.75,.75,
         0.0, 0.0, 0.0,
-        kDiffuseMtrl,
+        DIFFUSE,
     },  
     
     // three balls
@@ -88,21 +119,21 @@ static Sphere objects[NOBJECTS] =
         SQR(16.5),
         1.0, 1.0, 1.0, 
         0.0, 0.0, 0.0,
-        kDiffuseMtrl,
+        SPECULAR,
     },
     {
         73,16.5,78,
         SQR(20.5),
         1.0, 1.0, 1.0,
         0.0, 0.0, 0.0,
-        kDiffuseMtrl,
+        SPECULAR,
     },  
     {
         27,16.5,100,
         SQR(10.5),
         1.0, 1.0, 1.0,
         0.0, 0.0, 0.0,
-        kDiffuseMtrl,
+        SPECULAR,
     },
     
     // top light
@@ -111,39 +142,34 @@ static Sphere objects[NOBJECTS] =
         SQR(600),
         0, 0, 0,
         12, 12, 12,
-        kDiffuseMtrl,
+        DIFFUSE,
     },
 };
-
+ 
 float sphereIntersect(Sphere s, Ray ray)
 {
-    float3 v = s.center - ray.o;
-    float b = dot(v, ray.d);
+    float3 v = s.pos - ray.orig;
+    float b = dot(v, ray.dir);
     float disc = (b*b) - dot(v, v) + s.rad2;
-
+ 
     if (disc<=0) return -1.0; // ray misses
-
+ 
     disc = sqrt(disc);
     float t2 = b + disc;
-
+ 
     if (t2<=kEpsilon) return -1.0; // behind ray origin
-
+ 
     float t1 = b - disc;
-
+ 
     if ((t1>kEpsilon) && (t1<t2))  // return nearest intersection
         return t1;
     else
         return t2;
 }
-
-float3 calcSphereNormal(Sphere s, float3 i)
-{
-    return normalize(i - s.center);
-}
-
+ 
 // find nearest hit, stored in hitId
 // returns intersection point
-float3 nearestHit(Ray ray, out int hitId)
+float3 sceneIntersect(Ray ray, out int hitId)
 {
     float mint = 1e10;
     hitId = -1;
@@ -159,9 +185,9 @@ float3 nearestHit(Ray ray, out int hitId)
             }
         }
     }
-    return ray.o + ray.d*mint;
+    return ray.orig + ray.dir*mint;
 }
-
+ 
 // test for any hit (for shadow rays)
 bool anyHit(Ray ray)
 {
@@ -172,69 +198,107 @@ bool anyHit(Ray ray)
     }
     return false;
 }
-
-struct ShadeResult
+ 
+float3 radiance(Ray ray_, int depth_, float2 randSeed)
 {
-    float3 color;
-    float3 emission;
-};
-
-ShadeResult shade(float3 pt, float3 n, float3 v, int hitId)
-{
-#if 0
-    float3 l = normalize(lightPosition - pt);
-
-    // check if shadowed
-    Ray shadowray;
-    shadowray.o = pt;
-    shadowray.d = l;
-    bool shadowed = anyHit(shadowray);
-#endif
-    // lighting
-    float3 diff = objects[hitId].color + objects[hitId].emission;
+    int hitId = 0;
+    Ray ray = ray_;
+    int depth = depth_;
+    float3 cl = {0,0,0};   // accumulated color
+    float3 cf = {1,1,1};  // accumulated reflectance  
     
-    return float4(diff, 1);//phong(n, l, v, kShininess, diff, spec);
+    while (1)
+    {
+        float3 hitPt = sceneIntersect(ray, hitId);
+        if (hitId == -1)
+            return cl;
+ 
+        Sphere hitObj = objects[hitId];
+        float3 hitNorm = normalize(hitPt - hitObj.pos);
+        float3 f = hitObj.color;
+        float p = max(max(f.r, f.g), f.b);
+
+        cl = cl + cf * hitObj.emission;
+
+        if (++depth > 10) 
+        {
+            if (rand(randSeed) < p) 
+                f = f*(1/p); 
+
+            return cl; //R.R.
+        }
+        
+  		cf = cf * f;
+        
+        if (hitObj.refl == DIFFUSE)
+        {
+            // axis: newX/newY/newZ
+            float3 newZ = dot(hitNorm, ray.dir) < 0 ? hitNorm : hitNorm * -1; // properly oriented surface normal;
+            float3 newX = abs(newZ.x) > .1 ? axisY : axisX;
+            newX = normalize(cross(newX, newZ));
+            float3 newY = cross(newZ, newX);
+
+            // uniformly distributed random direction 
+            float angle = 2 * M_PI * rand(randSeed); // angle around
+            float radius = rand(randSeed);   // distance from center
+            float radius_sqrt = sqrt(radius);
+            float3 sampDir = newX*cos(angle)*radius_sqrt + newY*sin(angle)*radius_sqrt + newZ*sqrt(1 - radius);
+
+            ray.orig = hitPt;
+            ray.dir = normalize(sampDir);	
+        }
+        else
+        {
+            ray.orig = hitPt;
+            ray.dir = reflect(ray.dir, hitNorm);	
+        }
+    }
+    
+    return cl;
 }
+ 
+#define SAMPLES 4
 
 float4 main(float4 pos : SV_POSITION) : SV_TARGET
-{    
-    Ray cam = {float3(50,52,295.6), normalize(float3(0,-0.042612,-1))};
+{
+    Ray cam = {
+    	float3(50 + (mouse.x - resolution.x/2),
+    	52 + (resolution.y/2 - mouse.y),
+    	295.6), 
+    	normalize(float3(0,-0.042612,-1))
+	};
     
     float3 cx = float3(resolution.x * kAspect / resolution.y, 0, 0);
-    float3 cy = normalize(cross(cx, cam.d)) * kAspect;
-    float3 d = cx*(pos.x / resolution.x - .5 ) - cy*((pos.y + 4)/ resolution.y - .5) + cam.d;
-    // Camera rays are pushed ^^^^^ forward to start in interior
-    Ray mainRay = {cam.o+d*140, normalize(d)};
-    
-    // find nearest hit
-    int hitId;
-    float3 pt = nearestHit(mainRay, hitId);
-    float4 c = backgroundColor;
-    
-    if (hitId != -1) {
+    float3 cy = normalize(cross(cx, cam.dir)) * kAspect;
 
-        // return float4(hitId * 0.1, 0, 0, 0);
-    
-        // shade surface
-        float3 n = calcSphereNormal(objects[hitId], pt);
-        c = shade(pt, n, mainRay.d, hitId);
-        
-#ifdef REFLECTION_ENABLED
-        // shoot reflection ray
-        // level 2 recursion
-        float3 r = reflect(mainRay.d, n);
-        Ray reflray = {pt, r};
-        int hitId2;
-        pt = nearestHit(reflray, hitId2);
-        if (hitId2 != -1) {
-            n = calcSphereNormal(objects[hitId2], pt);
-            c += shade(pt, n, reflray.d, hitId2);
-        } else {
-            c += backgroundColor;
-        }
+    float3 clrQuad = {0, 0, 0};
+
+	for (int sy = 0; sy < 2; sy++) 
+	{
+		for (int sx = 0; sx < 2; sx++)
+		{   
+    		float3 clr = {0, 0, 0};
+#if 0
+			for (int s = 0; s < SAMPLES; s++)
+			{
+				float dx = tentFilterRandom(pos.xy);
+				float dy = tentFilterRandom(pos.xy);
+	            float3 d = cx*( ( (sx+.5 + dx)/2 + pos.x)/resolution.x - .5) -
+	                cy*( ( (sy+.5 + dy)/2 + pos.y)/resolution.y - .5) + cam.dir;
+			    // Camera rays are pushed ^^^^^ forward to start in interior
+			    Ray ray = {cam.orig+d*140, normalize(d)};
+			    clr = clr + radiance(ray, 0, pos.xy / resolution) * (1./SAMPLES);
+			}
+#else
+            float3 d = cx*( ((sx+.5)/2 + pos.x) / resolution.x - .5 ) - 
+				cy*( ((sy+.5)/2 + pos.y) / resolution.y - .5) + cam.dir;
+		    // Camera rays are pushed ^^^^^ forward to start in interior
+		    Ray ray = {cam.orig+d*140, normalize(d)};
+		    clr = clr + radiance(ray, 0, pos.xy / resolution);
 #endif
-    }
+		    clrQuad = clrQuad + saturate(clr) * 0.25;			
+		}
+	}
 
-    return c;
+	return float4(clrQuad, 1);
 }
-
