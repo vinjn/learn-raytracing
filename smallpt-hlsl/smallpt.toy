@@ -133,7 +133,7 @@ static Sphere objects[NOBJECTS] =
         SQR(10.5),
         1.0, 1.0, 1.0,
         0.0, 0.0, 0.0,
-        SPECULAR,
+        DIFFUSE,
     },
     
     // top light
@@ -257,7 +257,7 @@ float3 radiance(Ray ray_, int depth_, float2 randSeed)
     return cl;
 }
  
-#define SAMPLES 4
+#define SAMPLES 16
 
 float4 main(float4 pos : SV_POSITION) : SV_TARGET
 {
@@ -273,28 +273,31 @@ float4 main(float4 pos : SV_POSITION) : SV_TARGET
 
     float3 clrQuad = {0, 0, 0};
 
+    float2 uv = pos.xy;
+
+    // 2 x 2 super solution
 	for (int sy = 0; sy < 2; sy++) 
 	{
 		for (int sx = 0; sx < 2; sx++)
-		{   
+		{
     		float3 clr = {0, 0, 0};
-#if 0
+#if SAMPLES > 1
 			for (int s = 0; s < SAMPLES; s++)
 			{
-				float dx = tentFilterRandom(pos.xy);
-				float dy = tentFilterRandom(pos.xy);
+				float dx = tentFilterRandom(uv);
+				float dy = tentFilterRandom(uv);
 	            float3 d = cx*( ( (sx+.5 + dx)/2 + pos.x)/resolution.x - .5) -
 	                cy*( ( (sy+.5 + dy)/2 + pos.y)/resolution.y - .5) + cam.dir;
 			    // Camera rays are pushed ^^^^^ forward to start in interior
 			    Ray ray = {cam.orig+d*140, normalize(d)};
-			    clr = clr + radiance(ray, 0, pos.xy / resolution) * (1./SAMPLES);
+			    clr = clr + radiance(ray, 0, uv / resolution) * (1./SAMPLES);
 			}
 #else
             float3 d = cx*( ((sx+.5)/2 + pos.x) / resolution.x - .5 ) - 
 				cy*( ((sy+.5)/2 + pos.y) / resolution.y - .5) + cam.dir;
 		    // Camera rays are pushed ^^^^^ forward to start in interior
 		    Ray ray = {cam.orig+d*140, normalize(d)};
-		    clr = clr + radiance(ray, 0, pos.xy / resolution);
+		    clr = clr + radiance(ray, 0, uv / resolution);
 #endif
 		    clrQuad = clrQuad + saturate(clr) * 0.25;			
 		}
