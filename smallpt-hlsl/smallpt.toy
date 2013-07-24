@@ -242,7 +242,7 @@ float3 radiance(Ray ray_, int depth_, float2 randSeed)
     return cl;
 }
  
-#define SAMPLES 16
+#define SAMPLES 8
 static const float INV_SAMPLES = 1.0 / SAMPLES;
 
 float4 main(float4 pos : SV_POSITION) : SV_TARGET
@@ -259,7 +259,7 @@ float4 main(float4 pos : SV_POSITION) : SV_TARGET
 
     float3 clrQuad = {0, 0, 0};
 
-    float2 uv = pos.xy;
+    float2 uv = pos.xy / resolution;
 
     // 2 x 2 super solution
     for (int sy = 0; sy < 2; sy++) 
@@ -276,14 +276,14 @@ float4 main(float4 pos : SV_POSITION) : SV_TARGET
                     cy*( ( (sy+.5 + dy)/2 + pos.y)/resolution.y - .5) + cam.dir;
                 // Camera rays are pushed ^^^^^ forward to start in interior
                 Ray ray = {cam.orig+d*140, normalize(d)};
-                clr = clr + radiance(ray, 0, uv / resolution) * INV_SAMPLES;
+                clr = clr + radiance(ray, 0, uv) * INV_SAMPLES;
             }
 #else
             float3 d = cx*( ((sx+.5)/2 + pos.x) / resolution.x - .5 ) - 
                 cy*( ((sy+.5)/2 + pos.y) / resolution.y - .5) + cam.dir;
             // Camera rays are pushed ^^^^^ forward to start in interior
             Ray ray = {cam.orig+d*140, normalize(d)};
-            clr = clr + radiance(ray, 0, uv / resolution);
+            clr = clr + radiance(ray, 0, uv);
 #endif
             clrQuad = clrQuad + saturate(clr) * 0.25;           
         }
