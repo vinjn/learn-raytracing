@@ -2,10 +2,6 @@
 // The second version is https://github.com/vinjn/HlslShaderToy/blob/master/samples/scene_raytrace.toy
 // And this is the third version
 
-// Checkered.jpg
- 
-static float4 backgroundColor = { 0.1, 0.1, 0.1, 1.0 };
- 
 #define kAspect .5135
 #define kEpsilon 0.001
 
@@ -28,8 +24,8 @@ float random( float2 p )
 // also changes the valud of p
 float rand( inout float2 p )
 {
-	p.x = random(p);
-	return p.x;
+    p.x = random(p);
+    return p.x;
 }
 
 inline float tentFilterRandom(inout float2 p)
@@ -187,18 +183,7 @@ float3 sceneIntersect(Ray ray, out int hitId)
     }
     return ray.orig + ray.dir*mint;
 }
- 
-// test for any hit (for shadow rays)
-bool anyHit(Ray ray)
-{
-    for(int i=0; i<NOBJECTS; i++)
-    {
-        if (sphereIntersect(objects[i], ray) > 0) 
-            return true;
-    }
-    return false;
-}
- 
+
 float3 radiance(Ray ray_, int depth_, float2 randSeed)
 {
     int hitId = 0;
@@ -214,22 +199,22 @@ float3 radiance(Ray ray_, int depth_, float2 randSeed)
             return cl;
  
         Sphere hitObj = objects[hitId];
-        float3 hitNorm = normalize(hitPt - hitObj.pos);
         float3 f = hitObj.color;
-        float p = max(max(f.r, f.g), f.b);
+        float maxRefl = max(max(f.r, f.g), f.b);
 
         cl = cl + cf * hitObj.emission;
 
         if (++depth > 10) 
         {
-            if (rand(randSeed) < p) 
-                f = f*(1/p); 
+            if (rand(randSeed) < maxRefl) 
+                f = f / maxRefl; 
 
             return cl; //R.R.
         }
         
-  		cf = cf * f;
-        
+        cf = cf * f;
+
+        float3 hitNorm = normalize(hitPt - hitObj.pos);
         if (hitObj.refl == DIFFUSE)
         {
             // axis: newX/newY/newZ
@@ -245,12 +230,12 @@ float3 radiance(Ray ray_, int depth_, float2 randSeed)
             float3 sampDir = newX*cos(angle)*radius_sqrt + newY*sin(angle)*radius_sqrt + newZ*sqrt(1 - radius);
 
             ray.orig = hitPt;
-            ray.dir = normalize(sampDir);	
+            ray.dir = normalize(sampDir);   
         }
         else
         {
             ray.orig = hitPt;
-            ray.dir = reflect(ray.dir, hitNorm);	
+            ray.dir = reflect(ray.dir, hitNorm);    
         }
     }
     
@@ -258,15 +243,16 @@ float3 radiance(Ray ray_, int depth_, float2 randSeed)
 }
  
 #define SAMPLES 16
+static const float INV_SAMPLES = 1.0 / SAMPLES;
 
 float4 main(float4 pos : SV_POSITION) : SV_TARGET
 {
     Ray cam = {
-    	float3(50 + (mouse.x - resolution.x/2),
-    	52 + (resolution.y/2 - mouse.y),
-    	295.6), 
-    	normalize(float3(0,-0.042612,-1))
-	};
+        float3(50 + (mouse.x - resolution.x/2),
+        52 + (resolution.y/2 - mouse.y),
+        295.6), 
+        normalize(float3(0,-0.042612,-1))
+    };
     
     float3 cx = float3(resolution.x * kAspect / resolution.y, 0, 0);
     float3 cy = normalize(cross(cx, cam.dir)) * kAspect;
@@ -276,32 +262,32 @@ float4 main(float4 pos : SV_POSITION) : SV_TARGET
     float2 uv = pos.xy;
 
     // 2 x 2 super solution
-	for (int sy = 0; sy < 2; sy++) 
-	{
-		for (int sx = 0; sx < 2; sx++)
-		{
-    		float3 clr = {0, 0, 0};
+    for (int sy = 0; sy < 2; sy++) 
+    {
+        for (int sx = 0; sx < 2; sx++)
+        {
+            float3 clr = {0, 0, 0};
 #if SAMPLES > 1
-			for (int s = 0; s < SAMPLES; s++)
-			{
-				float dx = tentFilterRandom(uv);
-				float dy = tentFilterRandom(uv);
-	            float3 d = cx*( ( (sx+.5 + dx)/2 + pos.x)/resolution.x - .5) -
-	                cy*( ( (sy+.5 + dy)/2 + pos.y)/resolution.y - .5) + cam.dir;
-			    // Camera rays are pushed ^^^^^ forward to start in interior
-			    Ray ray = {cam.orig+d*140, normalize(d)};
-			    clr = clr + radiance(ray, 0, uv / resolution) * (1./SAMPLES);
-			}
+            for (int s = 0; s < SAMPLES; s++)
+            {
+                float dx = tentFilterRandom(uv);
+                float dy = tentFilterRandom(uv);
+                float3 d = cx*( ( (sx+.5 + dx)/2 + pos.x)/resolution.x - .5) -
+                    cy*( ( (sy+.5 + dy)/2 + pos.y)/resolution.y - .5) + cam.dir;
+                // Camera rays are pushed ^^^^^ forward to start in interior
+                Ray ray = {cam.orig+d*140, normalize(d)};
+                clr = clr + radiance(ray, 0, uv / resolution) * INV_SAMPLES;
+            }
 #else
             float3 d = cx*( ((sx+.5)/2 + pos.x) / resolution.x - .5 ) - 
-				cy*( ((sy+.5)/2 + pos.y) / resolution.y - .5) + cam.dir;
-		    // Camera rays are pushed ^^^^^ forward to start in interior
-		    Ray ray = {cam.orig+d*140, normalize(d)};
-		    clr = clr + radiance(ray, 0, uv / resolution);
+                cy*( ((sy+.5)/2 + pos.y) / resolution.y - .5) + cam.dir;
+            // Camera rays are pushed ^^^^^ forward to start in interior
+            Ray ray = {cam.orig+d*140, normalize(d)};
+            clr = clr + radiance(ray, 0, uv / resolution);
 #endif
-		    clrQuad = clrQuad + saturate(clr) * 0.25;			
-		}
-	}
+            clrQuad = clrQuad + saturate(clr) * 0.25;           
+        }
+    }
 
-	return float4(clrQuad, 1);
+    return float4(clrQuad, 1);
 }
