@@ -9,7 +9,7 @@ struct RandomLCG
 {
     unsigned mSeed;
     RandomLCG(unsigned seed = 0) : mSeed(seed) {}
-    float operator()() { mSeed = 214013 * mSeed + 2531011; return mSeed * (1.0f / 4294967296); }
+    __forceinline double operator()() { mSeed = 214013 * mSeed + 2531011; return mSeed * (1.0f / 4294967296); }
 };
 
 struct Vec 
