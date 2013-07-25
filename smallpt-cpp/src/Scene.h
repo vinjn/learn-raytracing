@@ -1,5 +1,4 @@
-#ifndef __SMALLPT_SCENE_H__
-#define __SMALLPT_SCENE_H__
+#pragma once
 
 // a scene composed of geometries
 
@@ -19,7 +18,7 @@ struct IScene
 
     void addGeometries(Geometry* geoms[], size_t count)
     {
-        for (size_t i=0; i < count; i++)
+        for (size_t i = 0; i < count; i++)
         {
             addGeometry(geoms[i]);
         }
@@ -55,12 +54,12 @@ struct SimpleScene : public IScene
     {
         const double kInfinity = hitDist = 1e20;
         size_t nGeom = mGeomtries.size();
-        for (size_t i = 0;i < nGeom;i++) 
+        for (size_t i = 0; i < nGeom; i++) 
         {
-            double d = mGeomtries[i]->intersect(ray);
-            if (d && d < hitDist)
+            double dist = mGeomtries[i]->intersect(ray);
+            if (dist && dist < hitDist)
             {
-                hitDist = d;
+                hitDist = dist;
                 hitId = i;
             }
         }
@@ -70,5 +69,3 @@ struct SimpleScene : public IScene
 protected:
     std::vector<Geometry*> mGeomtries;
 };
-
-#endif __SMALLPT_SCENE_H__

@@ -1,5 +1,4 @@
-#ifndef __SMALLPT_UTILS_H__
-#define __SMALLPT_UTILS_H__
+#pragma once
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -52,7 +51,12 @@ struct Vec
         return Vec(x * b, y * b, z * b);
     }
 
-    Vec mult(const Vec& b) const
+    Vec operator/(double b) const 
+    { 
+        return Vec(x / b, y / b, z / b);
+    }
+
+    Vec operator*(const Vec& b) const
     { 
         return Vec(x * b.x, y * b.y, z * b.z);
     }
@@ -67,16 +71,26 @@ struct Vec
         return x * b.x + y * b.y + z * b.z; 
     }
 
-    Vec cross(const Vec& b)
+    Vec cross(const Vec& b) const
     {
         return Vec(y * b.z-z * b.y, z * b.x-x * b.z, x * b.y-y * b.x);
     }
-
-    static Vec reflect(const Vec& incident, const Vec& normal)
-    {
-        return incident - normal * incident.dot(normal) * 2;
-    }
 };
+
+inline double dot(const Vec& a, const Vec& b)
+{
+    return a.dot(b);
+}
+
+inline Vec cross(const Vec& a, const Vec& b)
+{
+    return a.cross(b);
+}
+
+inline Vec reflect(const Vec& incident, const Vec& normal)
+{
+    return incident - normal * incident.dot(normal) * 2;
+}
 
 struct Ray 
 {
@@ -101,5 +115,3 @@ T max(T a, T b, T c)
         ( b > c ) ? b :
         c;
 }
-
-#endif // __SMALLPT_UTILS_H__

@@ -1,5 +1,4 @@
-#ifndef __SMALLPT_SPHERE_H__
-#define __SMALLPT_SPHERE_H__
+#pragma once
 
 #include "Utils.h"
 
@@ -30,20 +29,19 @@ struct Sphere : public Geometry
     virtual double intersect(const Ray &r) const 
     {   
         // returns distance, 0 if no hit
-        Vec op = pos-r.orig; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
-        double eps=1e-4, b=op.dot(r.dir), det=b*b-op.dot(op)+radius*radius;
-        if (det<0) 
+        Vec op = pos - r.orig; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
+        const double kEpsilon = 1e-4;
+        double b = dot(op, r.dir);
+        double det = b*b - dot(op, op) + radius*radius;
+        if (det < 0) 
             return 0; 
         else 
             det=sqrt(det);
         double t = 0;
-        if ((t = b - det) > eps)
+        if ((t = b - det) > kEpsilon)
             return t;
-        else if ((t = b + det) > eps)
+        else if ((t = b + det) > kEpsilon)
             return t;
         return 0;
     }
 };
-
-
-#endif __SMALLPT_SPHERE_H__

@@ -48,7 +48,8 @@ int main(int argc, char *argv[])
         default: exit(0);
         }
     }
-    if (optind < argc) {
+    if (optind < argc) 
+    {
         printf ("non-option ARGV-elements: ");
         while (optind < argc)
             printf ("%s ", argv[optind++]);
@@ -58,17 +59,16 @@ int main(int argc, char *argv[])
 
     IRenderer* renderer = NULL;
     {
-        if (rendererName == "forward")
-            renderer = new ForwardRenderer();
-        else if (rendererName == "diffuse")
+        if (rendererName == "diffuse")
             renderer = new DiffuseOnlyRenderer();
         else
             renderer = new SimpleRenderer();
     }
 
+    const float CAMERA_SCALE = .5135;
     Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
-    Vec cx = Vec(width*.5135/height);
-    Vec cy=(cx.cross(cam.dir)).norm()*.5135;
+    Vec cx = Vec(width * CAMERA_SCALE / height);
+    Vec cy = (cross(cx, cam.dir)).norm() * CAMERA_SCALE;
     Vec* colorBuf = new Vec[width*height];
     Vec r;
 
