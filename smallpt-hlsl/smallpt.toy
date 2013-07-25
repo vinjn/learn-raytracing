@@ -2,8 +2,8 @@
 // The second version is https://github.com/vinjn/HlslShaderToy/blob/master/samples/scene_raytrace.toy
 // And this is the third version
 
-#define kAspect .5135
-#define kEpsilon 0.001
+#define CAMERA_SCALE .5135
+#define EPSILON 0.001
 
 #define M_PI  3.14159265f
 
@@ -40,8 +40,8 @@ struct Ray
     float3 dir;
 };
  
-static int DIFFUSE = 0;
-static int SPECULAR = 1;
+#define DIFFUSE 0
+#define SPECULAR 1
 
 static const float3 axisX = {1, 0, 0};
 static const float3 axisY = {0, 1, 0};
@@ -146,18 +146,18 @@ float sphereIntersect(Sphere s, Ray ray)
 {
     float3 v = s.pos - ray.orig;
     float b = dot(v, ray.dir);
-    float disc = (b*b) - dot(v, v) + s.rad2;
+    float det = (b*b) - dot(v, v) + s.rad2;
  
-    if (disc<=0) return -1.0; // ray misses
+    if (det <= 0) return -1.0; // ray misses
  
-    disc = sqrt(disc);
-    float t2 = b + disc;
+    det = sqrt(det);
+    float t2 = b + det;
  
-    if (t2<=kEpsilon) return -1.0; // behind ray origin
+    if (t2 <= EPSILON) return -1.0; // behind ray origin
  
-    float t1 = b - disc;
+    float t1 = b - det;
  
-    if ((t1>kEpsilon) && (t1<t2))  // return nearest intersection
+    if ((t1 > EPSILON) && (t1 < t2))  // return nearest intersection
         return t1;
     else
         return t2;
@@ -242,7 +242,7 @@ float3 radiance(Ray ray_, int depth_, float2 randSeed)
     return cl;
 }
  
-#define SAMPLES 8
+#define SAMPLES 1
 static const float INV_SAMPLES = 1.0 / SAMPLES;
 
 float4 main(float4 pos : SV_POSITION) : SV_TARGET
@@ -254,8 +254,8 @@ float4 main(float4 pos : SV_POSITION) : SV_TARGET
         normalize(float3(0,-0.042612,-1))
     };
     
-    float3 cx = float3(resolution.x * kAspect / resolution.y, 0, 0);
-    float3 cy = normalize(cross(cx, cam.dir)) * kAspect;
+    float3 cx = float3(resolution.x * CAMERA_SCALE / resolution.y, 0, 0);
+    float3 cy = normalize(cross(cx, cam.dir)) * CAMERA_SCALE;
 
     float3 clrQuad = {0, 0, 0};
 
