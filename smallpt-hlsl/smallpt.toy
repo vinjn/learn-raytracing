@@ -151,16 +151,13 @@ float sphereIntersect(Sphere s, Ray ray)
     if (det <= 0) return -1.0; // ray misses
  
     det = sqrt(det);
-    float t2 = b + det;
- 
-    if (t2 <= EPSILON) return -1.0; // behind ray origin
- 
-    float t1 = b - det;
- 
-    if ((t1 > EPSILON) && (t1 < t2))  // return nearest intersection
-        return t1;
-    else
-        return t2;
+
+    float t = 0;
+    if ((t = b - det) > EPSILON)
+        return t;
+    else if ((t = b + det) > EPSILON)
+        return t;
+    return -1.0;    
 }
  
 // find nearest hit, stored in hitId
@@ -206,9 +203,8 @@ float3 radiance(Ray ray_, int depth_, float2 randSeed)
 
         if (++depth > 10) 
         {
-            if (rand(randSeed) < maxRefl) 
-                f = f / maxRefl; 
-
+            // if (rand(randSeed) < maxRefl) 
+            //     f = f / maxRefl;
             return cl; //R.R.
         }
         
