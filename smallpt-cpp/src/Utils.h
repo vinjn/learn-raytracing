@@ -92,6 +92,20 @@ inline Vec reflect(const Vec& incident, const Vec& normal)
     return incident - normal * incident.dot(normal) * 2;
 }
 
+inline void buildUVFromW(Vec& U, Vec& V, const Vec& W)
+{
+    U = cross(fabs(W.x)>.1 ? Vec::axisY() : Vec::axisX(), W);
+    U.norm();
+    V = cross(W, U);
+}
+
+// TODO: matrix-based
+inline Vec transformVec(const Vec& U, const Vec& V, const Vec& W,
+                     const Vec& vec)
+{
+    return U * vec.x + V * vec.y + W * vec.z;
+}
+
 struct Ray 
 {
     Vec orig, dir; 

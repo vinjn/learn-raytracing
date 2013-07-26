@@ -59,8 +59,8 @@ int main(int argc, char *argv[])
 
     IRenderer* renderer = NULL;
     {
-        if (rendererName == "diffuse")
-            renderer = new DiffuseOnlyRenderer();
+        if (rendererName == "explict")
+            renderer = new ExplicitRenderer();
         else
             renderer = new SimpleRenderer();
     }

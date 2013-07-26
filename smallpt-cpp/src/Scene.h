@@ -14,7 +14,8 @@ struct IScene
     static void printBuiltInSceneNames();
     static bool createBuiltInScene(IScene* pScene, const std::string& sceneName);
 
-    virtual Geometry* getGeometry(int id) const = 0;  
+    virtual int getGeometryCount() const = 0;
+    virtual const Geometry& getGeometry(int id) const = 0;  
 
     void addGeometries(Geometry* geoms[], size_t count)
     {
@@ -32,9 +33,14 @@ protected:
 
 struct SimpleScene : public IScene
 {
-    Geometry* getGeometry(int id) const
+    int getGeometryCount() const
     {
-        return mGeomtries[id];
+        return mGeomtries.size();
+    }
+
+    const Geometry& getGeometry(int id) const
+    {
+        return *mGeomtries[id];
     }
 
     void addGeometry(Geometry* geom)
